@@ -70,16 +70,16 @@ Recovery settings configures Vlab recovery service support of `sshmux` for `lega
 
 ### Logger Settings
 
-Logger settings configure the session logging of `sshmux`, which is described under [Logs](#logs). They are grouped under `logger` in the TOML file. At least one of `logger.udp` and `logger.otlp` must be enabled when `logger.enabled` is `true`.
+Logger settings configure the [OpenTelemetry](https://opentelemetry.io) logging of `sshmux`, which is described under [Logs](#logs). They are grouped under `logger` in the TOML file. At least one of `logger.udp` and `logger.otlp` must be enabled when `logger.enabled` is `true`.
 
 | Key            | Type                  | Description                                                                                | Required | Example                              |
 | -------------- | --------------------- | ------------------------------------------------------------------------------------------ | -------- | ------------------------------------ |
 | `enabled`      | `bool`                | Whether the logger is enabled. Defaults to `false`.                                        | No       | `true`                               |
 | `convention`   | `string`              | Schema the attributes are named after, `"default"` or `"ecs"`. Defaults to `"default"`. See [Attribute Conventions](#attribute-conventions). | No | `"ecs"` |
-| `service-name` | `string`              | Value of the `service.name` resource attribute. Defaults to `"sshmux"`.                    | No       | `"sshmux-vlab"`                      |
-| `attributes`   | `[]ResourceAttribute` | Extra resource attributes attached to every record.                                        | No       | `[{ name = "env", value = "prod" }]` |
+| `service-name` | `string`              | Value of the `service.name` resource attribute. Defaults to `"sshmux"`. See also [Resource Settings](#resource-settings). | No | `"sshmux-vlab"` |
+| `attributes`   | `[]ResourceAttribute` | Extra resource attributes attached to every record. See also [Resource Settings](#resource-settings). | No | `[{ name = "env", value = "prod" }]` |
 
-`service-name` and `attributes` fall back to `OTEL_SERVICE_NAME` and `OTEL_RESOURCE_ATTRIBUTES`, and describe the resource, which is `sshmux` and nothing around it: `sshmux` collects nothing about the host it runs on, the container holding it or the cluster beyond, leaving those to a collector to enrich the resource with, or to `OTEL_RESOURCE_ATTRIBUTES` where there is no collector. The OTLP sink always carries it, and over UDP only the `otel` shape has anywhere to put it.
+The OTLP sink always carries the resource, and over UDP only the `otel` shape has anywhere to put it.
 
 The convention names the attributes for both sinks alike. What differs between them is the document those attributes are written into, which OTLP defines for itself and `logger.udp.shape` decides for a datagram, so a collector that parses the existing fields can keep receiving them while an OTLP one is given the schema.
 
@@ -139,20 +139,14 @@ The OTLP exporter for logs is configured under `logger.otlp`, whose keys are des
 
 Metrics settings configure the [OpenTelemetry](https://opentelemetry.io) metrics of `sshmux`, which are described under [Metrics](#metrics). They are grouped under `metrics` in the TOML file. At least one of `metrics.otlp` and `metrics.prometheus` must be enabled when `metrics.enabled` is `true`.
 
-| Key                | Type          | Description                                                                                                   | Required | Example                              |
-| ------------------ | ------------- | ------------------------------------------------------------------------------------------------------------- | -------- | ------------------------------------ |
-| `enabled`          | `bool`        | Whether metrics collection is enabled. Defaults to `false`.                                                   | No       | `true`                               |
-| `convention`       | `string`      | Schema the attributes are named after, `"default"` or `"ecs"`. Defaults to `"default"`. See [Attribute Conventions](#attribute-conventions). | No | `"ecs"`     |
-| `service-name`     | `string`      | Value of the `service.name` resource attribute. Defaults to `"sshmux"`.                                       | No       | `"sshmux-vlab"`                      |
-| `attributes`       | `[]Attribute` | Extra resource attributes attached to every metric, e.g. to tag the deployment environment.                   | No       | `[{ name = "env", value = "prod" }]` |
-| `interval-seconds` | `uint`        | Interval at which metrics are pushed to the OTLP endpoint. Defaults to 60 seconds.                            | No       | `60`                                 |
-| `connection-grouping` | `bool`     | Whether the connection metrics carry the `user.name`, `sshmux.upstream.username`, `server.address` and `server.port` dimensions. Defaults to `true`. See [Connection Grouping](#connection-grouping). | No | `false` |
-
-`Attribute` is a table with a `name` and a `value`, both `string`s.
-
-Settings left out of the TOML file fall back to the standard OpenTelemetry environment variables, and then to the default, giving a precedence of **configuration file > environment > default**. This applies per setting, so configuring one key does not stop the environment from supplying another. Here, `service-name` and `attributes` fall back to `OTEL_SERVICE_NAME` and `OTEL_RESOURCE_ATTRIBUTES`, and `interval-seconds` to `OTEL_METRIC_EXPORT_INTERVAL`.
-
-`OTEL_SDK_DISABLED` and `OTEL_METRICS_EXPORTER` are **not** used: `metrics.enabled` and the two `enabled` keys under it are the only switches that decide what runs.
+| Key                   | Type                  | Description                                                                                                   | Required | Example                              |
+| --------------------- | --------------------- | ------------------------------------------------------------------------------------------------------------- | -------- | ------------------------------------ |
+| `enabled`             | `bool`                | Whether metrics collection is enabled. Defaults to `false`.                                                   | No       | `true`                               |
+| `convention`          | `string`              | Schema the attributes are named after, `"default"` or `"ecs"`. Defaults to `"default"`. See [Attribute Conventions](#attribute-conventions). | No | `"ecs"`     |
+| `service-name`        | `string`              | Value of the `service.name` resource attribute. Defaults to `"sshmux"`. See also [Resource Settings](#resource-settings). | No | `"sshmux-vlab"`                |
+| `attributes`          | `[]ResourceAttribute` | Extra resource attributes attached to every metric. See also [Resource Settings](#resource-settings).         | No       | `[{ name = "env", value = "prod" }]` |
+| `interval-seconds`    | `uint`                | Interval at which metrics are pushed to the OTLP endpoint. Defaults to 60 seconds. See also [Resource Settings](#resource-settings). | No | `60`                |
+| `connection-grouping` | `bool`                | Whether the connection metrics carry the `user.name`, `sshmux.upstream.username`, `server.address` and `server.port` dimensions. Defaults to `true`. See [Connection Grouping](#connection-grouping). | No | `false` |
 
 #### Metrics OTLP Settings
 
@@ -179,12 +173,10 @@ Tracer settings configure the [OpenTelemetry](https://opentelemetry.io) tracing 
 | -------------- | ------------------------- | ------------------------------------------------------------------------------------------ | -------- | ------------------------------------ |
 | `enabled`      | `bool`                    | Whether tracing is enabled. Defaults to `false`.                                           | No       | `true`                               |
 | `convention`   | `string`                  | Schema the attributes are named after, `"default"` or `"ecs"`. Defaults to `"default"`. See [Attribute Conventions](#attribute-conventions). | No | `"ecs"` |
-| `service-name` | `string`                  | Value of the `service.name` resource attribute. Defaults to `"sshmux"`.                    | No       | `"sshmux-vlab"`                      |
-| `attributes`   | `[]ResourceAttribute`     | Extra resource attributes attached to every span.                                          | No       | `[{ name = "env", value = "prod" }]` |
-| `sample-ratio` | `float`                   | Fraction of traces to record, between 0 and 1. Defaults to recording every trace.          | No       | `0.25`                               |
+| `service-name` | `string`                  | Value of the `service.name` resource attribute. Defaults to `"sshmux"`. See also [Resource Settings](#resource-settings). | No | `"sshmux-vlab"` |
+| `attributes`   | `[]ResourceAttribute`     | Extra resource attributes attached to every span. See also [Resource Settings](#resource-settings). | No | `[{ name = "env", value = "prod" }]` |
+| `sample-ratio` | `float`                   | Fraction of traces to record, between 0 and 1. Defaults to recording every trace. See also [Resource Settings](#resource-settings). | No | `0.25` |
 | `propagation`  | `bool`                    | Whether auth API requests carry trace context. Defaults to `true`. See [Tracing](#tracing). | No      | `false`                              |
-
-Settings left out of the TOML file fall back to the standard OpenTelemetry environment variables, so precedence is configuration file, then environment, then default. Here `service-name` and `attributes` fall back to `OTEL_SERVICE_NAME` and `OTEL_RESOURCE_ATTRIBUTES`, and `sample-ratio` to `OTEL_TRACES_SAMPLER` with `OTEL_TRACES_SAMPLER_ARG`.
 
 #### Tracer OTLP Settings
 
@@ -248,6 +240,16 @@ They differ in the following attributes:
 | What an error said   | `exception.message`        | `error.message`    |
 | Its underlying type  | `exception.type`           | dropped            |
 
+### Resource Settings
+
+Every signal carries a resource describing what produced it, which `service-name` and `attributes` shape. The [logger](#logger-settings), the [metrics](#metrics-settings) and the [tracer](#tracer-settings) each set their own, falling back to `OTEL_SERVICE_NAME` and `OTEL_RESOURCE_ATTRIBUTES` for what they leave out — as every telemetry setting falls back to its own OpenTelemetry variable and then to a default, the file winning over the environment, per setting.
+
+`service-name` is the `service.name` attribute, which defaults to `"sshmux"`. `attributes` is a list of `ResourceAttribute`, each a table with a `name` and a `value`, both `string`s, for whatever else a deployment is worth naming by — the environment it runs in, say.
+
+Beyond the resource, `metrics.interval-seconds` falls back to `OTEL_METRIC_EXPORT_INTERVAL`, and `tracer.sample-ratio` to `OTEL_TRACES_SAMPLER` with `OTEL_TRACES_SAMPLER_ARG`. `OTEL_SDK_DISABLED` and the `OTEL_*_EXPORTER` variables are read by none of them: the `enabled` keys are the only switches that decide what runs.
+
+The resource is `sshmux` and nothing around it: `sshmux` collects nothing about the host it runs on, the container holding it or the cluster beyond, leaving those to a collector to enrich the resource with, or to `OTEL_RESOURCE_ATTRIBUTES` where there is no collector.
+
 ### Error Classes
 
 `error.type` names what went wrong, on a record, a span and a metric alike, and its values are a closed set so that a label cannot be blown up by whatever a client sends. Each is a condition with an answer of its own:
@@ -270,11 +272,22 @@ They differ in the following attributes:
 
 ## Logs
 
-`sshmux` writes two records per session, and one when it starts and stops, through the sinks configured in the [Logger Settings](#logger-settings). Both sinks can be enabled at once, so an OTLP collector can be introduced alongside an existing UDP one.
+`sshmux` writes a record for each stage of a session and for its own lifecycle, through the sinks configured in the [Logger Settings](#logger-settings). Both sinks can be enabled at once, so an OTLP collector can be introduced alongside an existing UDP one.
 
-Each record is one of the two [session events](https://opentelemetry.io/docs/specs/semconv/general/session/) the semantic conventions define, and carries the `session.id` they require, which is the SSH session identifier the auth API is told as `session_id`. Over OTLP and in an `otel` document the class is the record's own event name, rather than the attribute each convention [names it in](#attribute-conventions).
+| Record                  | Level   | Attributes                           | Written when                                                  |
+| ----------------------- | ------- | ------------------------------------ | ------------------------------------------------------------- |
+| `session.start`         | `INFO`  | Connection                           | The SSH transport is up, where a session is first identified. |
+| `session.end`           | `INFO`  | Connection, event, the session's own | The connection closes.                                        |
+| `sshmux.server.start`   | `INFO`  | `server.*`, event                    | The listeners are up.                                         |
+| `sshmux.server.stop`    | `INFO`  | `server.*`, event                    | The last session has drained and the listeners are down.      |
+| `sshmux lost a session` | `WARN`  | Connection, error                    | A session ended with neither of its connections saying so.    |
+| —                       | `ERROR` | Error                                | `sshmux` carried on from an error of its own.                 |
 
-`session.start` is written once the SSH transport is up, which is where a session is first identified. It carries what is known of the connection by then, which is neither a user, none having authenticated yet, nor a backend, none having been named. `session.end` is written when the connection closes, and is what the rest of this section describes.
+The first four name themselves in `otel.event.name`; the last two have no event to be, and are known by their message and their level.
+
+Each session record is one of the two [session events](https://opentelemetry.io/docs/specs/semconv/general/session/) the semantic conventions define, and carries the `session.id` they require, which is the SSH session identifier the auth API is told as `session_id`. Over OTLP and in an `otel` document the class is the record's own event name, rather than the attribute each convention [names it in](#attribute-conventions).
+
+`session.start` carries what is known of the connection when the transport comes up, which is neither a user, none having authenticated yet, nor a backend, none having been named. `session.end` is what the rest of this section describes.
 
 A `session.end` record names the connection with the attributes the spans carry, `network.protocol.name`, `network.protocol.version`, `user.name`, `client.address`, `client.port`, `server.address` and `server.port`, and leaves out the ones whose values a connection never reached. To those it adds the event: `event.start` and `event.end`, the UTC times the connection was accepted and ended, `event.duration` in nanoseconds, `event.outcome`, which is `success` where the session was established and `failure` otherwise, `error.type` where something went wrong, naming one of the [error classes](#error-classes), and the ECS categorization `event.kind`, `event.category` and `event.type`, fixed at `event`, `network`, and `connection` with `end`.
 
@@ -304,7 +317,7 @@ $ socat UDP-LISTEN:5556 STDOUT
 
 A connection that fails before the transport is up is counted by `sshmux.connections` without either record being written for it. A handshake that fails afterwards still ends its session, and is recorded with the fields known at that point.
 
-`sshmux` reports itself starting and stopping as the `sshmux.server.start` and `sshmux.server.stop` events, the semantic conventions having nothing for a service's own lifecycle. Both name the `server.address` and `server.port` it was reached at, `sshmux` being the server of the address it listens on as the backend is of the one a session names. Both are categorized as ECS categorizes a process, `event.category` being `process` and `event.type` `start` or `end`, and both name `event.duration`: starting covers the listeners coming up, and stopping the last session draining and those listeners going down again.
+The lifecycle events are `sshmux`'s own, the semantic conventions having nothing for a service's. Both name the `server.address` and `server.port` it was reached at, `sshmux` being the server of the address it listens on as the backend is of the one a session names. Both are categorized as ECS categorizes a process, `event.category` being `process` and `event.type` `start` or `end`, and both name `event.duration`: starting covers the listeners coming up, and stopping the last session draining and those listeners going down again.
 
 A session ending is not among the errors: a client saying it is done is how sessions end, and `event.reason` says so on the record instead. A session that ended without either of its connections saying so is reported beside that record, at `WARN` rather than `ERROR` — the session happened, and it is not `sshmux` that failed — naming `error.type` and what the error said alongside the `session.id` that joins the two.
 
