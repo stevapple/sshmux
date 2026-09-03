@@ -79,7 +79,7 @@ Logger settings configure the session logging of `sshmux`, which is described un
 | `service-name` | `string`              | Value of the `service.name` resource attribute. Defaults to `"sshmux"`.                    | No       | `"sshmux-vlab"`                      |
 | `attributes`   | `[]ResourceAttribute` | Extra resource attributes attached to every record.                                        | No       | `[{ name = "env", value = "prod" }]` |
 
-`service-name` and `attributes` fall back to `OTEL_SERVICE_NAME` and `OTEL_RESOURCE_ATTRIBUTES`, and describe the resource. The OTLP sink always carries it, and over UDP only the `otel` shape has anywhere to put it.
+`service-name` and `attributes` fall back to `OTEL_SERVICE_NAME` and `OTEL_RESOURCE_ATTRIBUTES`, and describe the resource, which is `sshmux` and nothing around it: `sshmux` collects nothing about the host it runs on, the container holding it or the cluster beyond, leaving those to a collector to enrich the resource with, or to `OTEL_RESOURCE_ATTRIBUTES` where there is no collector. The OTLP sink always carries it, and over UDP only the `otel` shape has anywhere to put it.
 
 The convention names the attributes for both sinks alike. What differs between them is the document those attributes are written into, which OTLP defines for itself and `logger.udp.shape` decides for a datagram, so a collector that parses the existing fields can keep receiving them while an OTLP one is given the schema.
 

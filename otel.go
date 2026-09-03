@@ -117,11 +117,6 @@ func otelResourceAttributes(serviceName string, configured []ResourceAttributeCo
 	if _, ok := resourceAttribute(base, semconv.ServiceVersionKey); !ok {
 		attrs = append(attrs, semconv.ServiceVersion(buildVersion()))
 	}
-	if _, ok := resourceAttribute(base, semconv.HostNameKey); !ok {
-		if hostname, err := os.Hostname(); err == nil && hostname != "" {
-			attrs = append(attrs, semconv.HostName(hostname))
-		}
-	}
 	for _, attr := range configured {
 		if attr.Name == "" {
 			return nil, errors.New("resource attributes must have a name")
